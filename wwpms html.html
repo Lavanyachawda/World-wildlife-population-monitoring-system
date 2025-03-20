@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <style>
+        #map {position: absolute;top: 0; bottom: 0;left: 0;right: 0;}
+        .search-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #search-input {
+            padding: 5px;
+            width: 200px;
+            margin-right: 5px;
+        }
+        .search-results {
+            margin-top: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .heat-map-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="search-container">
+        <input type="text" id="search-input" placeholder="Search animals...">
+        <div class="search-results"></div>
+    </div>
+    <div class="heat-map-toggle">
+        <button onclick="toggleHeatMap()">Toggle Endangered Species Heat Map</button>
+    </div>
+    <script>
+        var map = L.map('map').setView([13.199524,76.953854],5);
+        var osm = L.tileLayer('https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=bgRMfxP3yPOJ4wFYi7dq', {
+            attribution: '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
+        }).addTo(map);
+
+        var esriImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community'
+        });
+        var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+	        maxZoom: 17,
+	        attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+        var CyclOSM = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+	        maxZoom: 20,
+	        attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases" title="CyclOSM - Open Bicycle render">CyclOSM</a> | Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+        
+
+        var marker = L.marker([21.9497, 88.7880],{
+            draggable:true,
+            title:"Bengal Tigers"
+        }).addTo(map).bindPopup(`
+            <h1>Bengal Tigers</h1>
+            <img src="Bengaltiger.jpg" style="width:200px">
+            <p>
+                <strong>Species Type:</strong> Mammal<br>
+                <strong>Found in:</strong> West Bengal, Madhya Pradesh, Uttarakhand, Karnataka, Assam, Uttar Pradesh, Maharashtra, Chhattisgarh, Odisha<br>
+                <strong>Population:</strong> ~2,967<br>
+                <strong>Description: </strong> Bengal Tiger is a majestic predator, known as India’s national animal. It plays a critical role in maintaining the balance of the ecosystem.<br>
+                <strong> Level:</strong> Endangered<br>
+                <strong>Threat Level:</strong> High (Habitat loss, poaching, human-wildlife conflict)<br>
+                <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/bengal_tiger/" target="_blank">WWF India - Bengal Tiger</a><br>
+                <strong>Evolution Pattern:</strong> Developed striped camouflage for stalking prey in dense forests.<br>
+                <strong>Habitat: </strong>Mangrove forests (Sundarbans), grasslands, and tropical rainforests.
+            </p>`);
+        var marker = L.marker([11.4102, 76.6950],{
+            draggable:true,
+            title:"Indian Elephant"
+        }).addTo(map).bindPopup(`
+            <h1>Indian Elephant</h1>
+            <img src="Indian Elephant.jpg" style="width:200px">
+            <p><strong>Species Type:</strong>Mammal<br>
+             <strong>Found in:</strong>Kerala, Karnataka, Tamil Nadu, Assam, West Bengal, Odisha, Meghalaya, Jharkhand<br>
+<strong>Population:</strong> ~27,000<br>
+<strong>Description:</strong> The Indian Elephant is an intelligent and social animal, often found in herds. It plays a key role in shaping its environment and dispersing seeds.<br>
+<strong> Level:</strong> Endangered<br>
+<strong>Threat Level:</strong> High (Habitat fragmentation, illegal ivory trade, human-wildlife conflict)<br>
+<strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/asian_elephants/" target="_blank">WWF India - Indian Elephant</a><br>
+<strong>Evolution Pattern:</strong> Adapted for tropical forests; larger ears to dissipate heat.</p>`);
+        var marker3 = L.marker([26.9124, 75.7873], {
+            draggable: true,
+            title: "Indian Peacock"
+        }).addTo(map).bindPopup(`
+            <h1>Indian Peacock</h1>
+            <img src="Indian peacock.jpg" style="width:200px; display:block; margin-bottom:10px;">
+            <p>
+        <strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong>Rajasthan, Gujarat, Madhya Pradesh, Uttar Pradesh, Karnataka, Tamil Nadu, Andhra Pradesh, Maharashtra<br>
+        <strong>Population:</strong> Stable (~500,000)<br>
+        <strong>Description:</strong> India’s national bird, the Indian Peacock is known for its iridescent blue-green plumage and elaborate courtship displays.<br>
+        <strong>Endangerment Level:</strong> Least Concern<br>
+        <strong>Threat Level:</strong> Low (Habitat destruction, hunting)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.bnhs.org/indian-peacock/" target="_blank">BNHS - Indian Peacock</a><br>
+        <strong>Evolution Pattern:</strong> Evolved vibrant colors to attract mates and intimidate predators.<br>
+        <strong>Habitat:</strong> Forests, grasslands, and agricultural fields.
+            </p>
+        `);
+        var marker4 = L.marker([33.7782, 76.5762],{
+    draggable: true,
+    title: "snow leopard"
+}).addTo(map).bindPopup(`
+    <h1>Snow Leopard</h1>
+    <img src="Snow Leopard.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong>Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim, Arunachal Pradesh<br>
+        <strong>Population:</strong> ~500 in India<br>
+        <strong>Description:</strong> A solitary and elusive predator, the Snow Leopard is often called the “Ghost of the Mountains.”<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> Medium (Habitat degradation, poaching)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/snow_leopard/" target="_blank">WWF India - Snow Leopard</a><br>
+        <strong>Evolution Pattern:</strong> Adapted to high-altitude cold climates with thick fur and large nasal cavities.<br>
+        <strong>Habitat:</strong> Himalayan mountains.
+    </p>
+        `);
+        var marker5 = L.marker([21.1240, 70.8022], {
+    draggable: true,
+    title: "Asiatic Lion"
+}).addTo(map).bindPopup(`
+    <h1>Asiatic Lion</h1>
+    <img src="Asiatic lion.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong>Gujarat (Exclusively in Gir Forest National Park)<br>
+        <strong>Population:</strong> ~674<br>
+        <strong>Description:</strong> Found only in the Gir Forest, the Asiatic Lion is a symbol of resilience and conservation success.<br>
+        <strong>Endangerment Level:</strong> Endangered<br>
+        <strong>Threat Level:</strong> High (Habitat fragmentation, human-wildlife conflict)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/asiatic_lion/" target="_blank">WWF India - Asiatic Lion</a><br>
+        <strong>Evolution Pattern:</strong> Evolved to survive in tropical dry forests.<br>
+        <strong>Habitat:</strong> Gir Forest National Park, Gujarat.
+    </p>
+`);
+var marker6 = L.marker([12.9716, 77.5946], {
+    draggable: true,
+    title: "Indian Star Tortoise"
+}).addTo(map).bindPopup(`
+    <h1>Indian Star Tortoise</h1>
+    <img src="Indian star tortoise.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Reptile<br>
+        <strong>Found in:</strong>Tamil Nadu, Karnataka, Andhra Pradesh, Odisha, parts of Maharashtra<br>
+        <strong>Population:</strong> Unknown (Decreasing)<br>
+        <strong>Description:</strong> The Indian Star Tortoise is named for its star-like shell pattern and is often targeted for the pet trade.<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> Medium (Illegal trade, habitat loss)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/39611/3002801" target="_blank">IUCN - Indian Star Tortoise</a><br>
+        <strong>Evolution Pattern:</strong> Adapted shell patterns for camouflage in dry grasslands.<br>
+        <strong>Habitat:</strong> Dry regions, scrub forests, and grasslands.
+    </p>
+`);
+var marker9 = L.marker([25.4358, 81.8463], {
+    draggable: true,
+    title: "Gharial"
+}).addTo(map).bindPopup(`
+    <h1>Gharial</h1>
+    <img src="Gharial.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Reptile<br>
+        <strong>Found in:</strong>Uttar Pradesh, Madhya Pradesh, Bihar, Rajasthan, Odisha (Primarily in Chambal, Son, Gandak, and Mahanadi rivers)<br>
+        <strong>Population:</strong> ~650<br>
+        <strong>Description:</strong> Known for its long, thin snout, the Gharial is a critically endangered crocodilian species found in river ecosystems.<br>
+        <strong>Endangerment Level:</strong> Critically Endangered<br>
+        <strong>Threat Level:</strong> High (Habitat degradation, fishing nets)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/gharial/" target="_blank">WWF India - Gharial</a><br>
+        <strong>Evolution Pattern:</strong> Adapted narrow snout for catching fish.<br>
+        <strong>Habitat:</strong> Rivers in northern India.
+    </p>
+`);
+
+var marker10 = L.marker([20.5937, 78.9629],{
+    draggable: true,
+    title: "Indian Cobra"
+}).addTo(map).bindPopup(`
+    <h1>Indian Cobra</h1>
+    <img src="Indian cobra.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Reptile<br>
+        <strong>Found in:</strong> Found across all states in India due to its adaptability to diverse habitats.<br>
+        <strong>Population:</strong> Stable<br>
+        <strong>Description:</strong> A venomous snake revered in Indian culture, the Indian Cobra is known for its iconic hood display.<br>
+        <strong>Endangerment Level:</strong> Least Concern<br>
+        <strong>Threat Level:</strong> Medium (Snake charmers, habitat destruction)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/177485/7492454" target="_blank">IUCN - Indian Cobra</a><br>
+        <strong>Evolution Pattern:</strong> Developed venom for hunting prey and defense.<br>
+        <strong>Habitat:</strong> Forests, wetlands, and agricultural fields.
+    </p>
+`);
+var marker8 = L.marker([22.5726, 88.3639], {
+    draggable: true,
+    title: "Indian Pangolin"
+}).addTo(map).bindPopup(`
+    <h1>Indian Pangolin</h1>
+    <img src="Indian pangolin.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong>Madhya Pradesh, Maharashtra, Odisha, Andhra Pradesh, West Bengal, Jharkhand, Tamil Nadu, Kerala, Karnataka<br>
+        <strong>Population:</strong> Unknown (Decreasing)<br>
+        <strong>Description:</strong> Covered in protective keratin scales, the Indian Pangolin is a shy nocturnal animal known for feeding on ants and termites.<br>
+        <strong>Endangerment Level:</strong> Endangered<br>
+        <strong>Threat Level:</strong> High (Illegal trafficking for scales)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/threatened_species/indian_pangolin/" target="_blank">WWF - Indian Pangolin</a><br>
+        <strong>Evolution Pattern:</strong> Developed tough scales for defense against predators.<br>
+        <strong>Habitat:</strong> Forests, grasslands, and agricultural fields.
+    </p>
+`);
+var marker1 = L.marker([3.146, 34.486], {
+        draggable: true,
+        title: "African Elephant"
+    }).addTo(map).bindPopup(`
+        <h1>African Elephant</h1>
+        <img src="African elephant.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Botswana, South Africa, Kenya, Zimbabwe, Tanzania<br>
+        <strong>Population:</strong> ~415,000<br>
+        <strong>Description:</strong> The African Elephant is the largest land animal on Earth and plays an important role in the ecosystem.<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> High (Poaching, habitat loss, human-wildlife conflict)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/12392/123935" target="_blank">IUCN - African Elephant</a><br>
+        <strong>Habitat:</strong> Savannas, forests, and deserts.</p>
+    `);
+
+    // Lion
+    var marker2 = L.marker([1.2921, 36.8219], {
+        draggable: true,
+        title: "Lion"
+    }).addTo(map).bindPopup(`
+        <h1>Lion</h1>
+        <img src="Lion.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Kenya, Tanzania, South Africa, Botswana, Zimbabwe<br>
+        <strong>Population:</strong> ~20,000<br>
+        <strong>Description:</strong> Known as the "king of the jungle", lions are apex predators and key to the health of their habitat.<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> High (Poaching, habitat loss, human-wildlife conflict)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/15951/115100865" target="_blank">IUCN - Lion</a><br>
+        <strong>Habitat:</strong> Grasslands, savannas, and open woodlands.</p>
+    `);
+
+    // Giraffe
+    var marker3 = L.marker([-1.2921, 36.8219], {
+        draggable: true,
+        title: "Giraffe"
+    }).addTo(map).bindPopup(`
+        <h1>Giraffe</h1>
+        <img src="Giraffe.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Kenya, South Africa, Namibia, Zimbabwe, Tanzania<br>
+        <strong>Population:</strong> ~68,000<br>
+        <strong>Description:</strong> Giraffes are the tallest land animals, known for their long necks and distinct spotted coat patterns.<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> Medium (Habitat loss, poaching, human-wildlife conflict)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/8984/15790434" target="_blank">IUCN - Giraffe</a><br>
+        <strong>Habitat:</strong> Open woodlands, savannas, and grasslands.</p>
+    `);
+
+    // Rhinoceros
+    var marker4 = L.marker([-29.6166, 30.3897], {
+        draggable: true,
+        title: "Rhino"
+    }).addTo(map).bindPopup(`
+        <h1>Rhinoceros</h1>
+        <img src="Rhino.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> South Africa, Kenya, Namibia, Zimbabwe, Tanzania<br>
+        <strong>Population:</strong> ~5,000 (White Rhino)<br>
+        <strong>Description:</strong> Rhinos are large herbivores, known for their thick skin and iconic horn.<br>
+        <strong>Endangerment Level:</strong> Critically Endangered<br>
+        <strong>Threat Level:</strong> High (Poaching, habitat loss)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/4185/121112508" target="_blank">IUCN - Rhinoceros</a><br>
+        <strong>Habitat:</strong> Grasslands, savannas, and wetlands.</p>
+    `);
+
+    // Cheetah
+    var marker5 = L.marker([5.6214, 21.3054], {
+        draggable: true,
+        title: "Cheetah"
+    }).addTo(map).bindPopup(`
+        <h1>Cheetah</h1>
+        <img src="cheetah.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Namibia, South Africa, Botswana, Tanzania, Kenya<br>
+        <strong>Population:</strong> ~7,100<br>
+        <strong>Description:</strong> Cheetahs are the fastest land animals, known for their exceptional speed and slender bodies.<br>
+        <strong>Endangerment Level:</strong> Vulnerable<br>
+        <strong>Threat Level:</strong> High (Poaching, habitat loss, human-wildlife conflict)<br>
+        <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/9190/50662656" target="_blank">IUCN - Cheetah</a><br>
+        <strong>Habitat:</strong> Grasslands, savannas, and semi-deserts.</p>
+    `);
+    
+    // Australian Animals
+    // 1. Kangaroo
+    var marker1 = L.marker([-25.2744, 133.7751], {
+        draggable: true,
+        title: "Kangaroo"
+    }).addTo(map).bindPopup(`
+        <h1>Kangaroo</h1>
+        <img src="kangaroo.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Throughout Australia<br>
+        <strong>Population:</strong> ~50 million<br>
+        <strong>Conservation Status:</strong> Least Concern<br>
+        <strong>Extinction Rate:</strong> Low<br>
+        <strong>Description:</strong> Iconic marsupials known for their powerful hind legs and pouch for carrying their young.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.australianwildlife.org/" target="_blank">Australian Wildlife Conservancy</a></p>
+    `);
+
+    // 2. Koala
+    var marker2 = L.marker([-30.3298, 151.7519], {
+        draggable: true,
+        title: "Koala"
+    }).addTo(map).bindPopup(`
+        <h1>Koala</h1>
+        <img src="koala.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Eastern and Southern Australia<br>
+        <strong>Population:</strong> ~300,000<br>
+        <strong>Conservation Status:</strong> Vulnerable<br>
+        <strong>Extinction Rate:</strong> Moderate<br>
+        <strong>Description:</strong> Tree-dwelling marsupial known for its diet of eucalyptus leaves.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.savethekoala.com/" target="_blank">Australian Koala Foundation</a></p>
+    `);
+
+    // 3. Platypus
+    var marker3 = L.marker([-33.8688, 151.2093], {
+        draggable: true,
+        title: "Platypus"
+    }).addTo(map).bindPopup(`
+        <h1>Platypus</h1>
+        <img src="platypus.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Eastern Australia and Tasmania<br>
+        <strong>Population:</strong> Unknown but declining<br>
+        <strong>Conservation Status:</strong> Near Threatened<br>
+        <strong>Extinction Rate:</strong> Moderate<br>
+        <strong>Description:</strong> Unique egg-laying mammals with duck-bill and webbed feet.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://platypus.asn.au/" target="_blank">Australian Platypus Conservancy</a></p>
+    `);
+
+    // 4. Wombat
+    var marker4 = L.marker([-37.4713, 144.7852], {
+        draggable: true,
+        title: "Wombat"
+    }).addTo(map).bindPopup(`
+        <h1>Wombat</h1>
+        <img src="wombat.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> South and East Australia<br>
+        <strong>Population:</strong> Common Wombat: Stable; Northern Hairy-Nosed Wombat: ~250<br>
+        <strong>Conservation Status:</strong> Common: Least Concern; Northern Hairy-Nosed: Critically Endangered<br>
+        <strong>Extinction Rate:</strong> High for Northern Hairy-Nosed Wombat<br>
+        <strong>Description:</strong> Burrowing marsupials with strong claws and a short tail.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.wombatfoundation.com.au/" target="_blank">The Wombat Foundation</a></p>
+    `);
+
+    // 5. Tasmanian Devil
+    var marker5 = L.marker([-42.8821, 147.3272], {
+        draggable: true,
+        title: "Tasmanian Devil"
+    }).addTo(map).bindPopup(`
+        <h1>Tasmanian Devil</h1>
+        <img src="tasmanian devil.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Tasmania<br>
+        <strong>Population:</strong> ~25,000<br>
+        <strong>Conservation Status:</strong> Endangered<br>
+        <strong>Extinction Rate:</strong> High due to facial tumor disease<br>
+        <strong>Description:</strong> Carnivorous marsupial with strong jaws and black fur.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.tassiedevil.com.au/" target="_blank">Save the Tasmanian Devil Program</a></p>
+    `);
+
+    // New Zealand Animals
+    // 1. Kiwi
+    var marker6 = L.marker([-40.9006, 174.8860], {
+        draggable: true,
+        title: "Kiwi"
+    }).addTo(map).bindPopup(`
+        <h1>Kiwi</h1>
+        <img src="kiwi.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong> North Island, South Island<br>
+        <strong>Population:</strong> ~68,000<br>
+        <strong>Conservation Status:</strong> Vulnerable<br>
+        <strong>Extinction Rate:</strong> High due to habitat loss and predators<br>
+        <strong>Description:</strong> Flightless bird and a national symbol of New Zealand.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.savethekiwi.nz/" target="_blank">Save the Kiwi</a></p>
+    `);
+
+    // 2. Kakapo
+    var marker7 = L.marker([-45.0302, 169.8611], {
+        draggable: true,
+        title: "Kakapo"
+    }).addTo(map).bindPopup(`
+        <h1>Kakapo</h1>
+        <img src="kakapo.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong> Fiordland, offshore islands<br>
+        <strong>Population:</strong> ~250<br>
+        <strong>Conservation Status:</strong> Critically Endangered<br>
+        <strong>Extinction Rate:</strong> High<br>
+        <strong>Description:</strong> Nocturnal, flightless parrot with green feathers.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.doc.govt.nz/kakapo" target="_blank">Kakapo Recovery Programme</a></p>
+    `);
+
+    // South American Animals
+    // 1. Jaguar
+    var marker8 = L.marker([-3.4653, -62.2159], {
+        draggable: true,
+        title: "Jaguar"
+    }).addTo(map).bindPopup(`
+        <h1>Jaguar</h1>
+        <img src="jaguar.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Amazon Rainforest<br>
+        <strong>Population:</strong> ~173,000<br>
+        <strong>Conservation Status:</strong> Near Threatened<br>
+        <strong>Extinction Rate:</strong> Moderate<br>
+        <strong>Description:</strong> Large feline known for its spotted coat and powerful build.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.worldwildlife.org/species/jaguar" target="_blank">World Wildlife Fund - Jaguar</a></p>
+    `);
+
+    // 2. Sloth
+    var marker9 = L.marker([-13.1631, -72.5450], {
+        draggable: true,
+        title: "Sloth"
+    }).addTo(map).bindPopup(`
+        <h1>Sloth</h1>
+        <img src="sloth.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Rainforests of South America<br>
+        <strong>Population:</strong> Unknown but stable<br>
+        <strong>Conservation Status:</strong> Least Concern<br>
+        <strong>Extinction Rate:</strong> Low<br>
+        <strong>Description:</strong> Slow-moving tree-dwelling mammals.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://slothconservation.org/" target="_blank">Sloth Conservation Foundation</a></p>
+    `);
+
+    // 3. Llama
+    var marker10 = L.marker([-22.9068, -68.1951], {
+        draggable: true,
+        title: "Llama"
+    }).addTo(map).bindPopup(`
+        <h1>Llama</h1>
+        <img src="llama.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Andes Mountains<br>
+        <strong>Population:</strong> Stable<br>
+        <strong>Conservation Status:</strong> Domesticated<br>
+        <strong>Extinction Rate:</strong> Low<br>
+        <strong>Description:</strong> Domesticated herbivore used for wool and transport.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.sacredvalleyllamapreservation.com" target="_blank">Sacred Valley Llama Preservation</a></p>
+    `);
+
+    // 4. Anaconda
+    var marker11 = L.marker([-3.4653, -62.2159], {
+        draggable: true,
+        title: "Anaconda"
+    }).addTo(map).bindPopup(`
+        <h1>Anaconda</h1>
+        <img src="anaconda.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Reptile<br>
+        <strong>Found in:</strong> Amazon Rainforest<br>
+        <strong>Population:</strong> Unknown<br>
+        <strong>Conservation Status:</strong> Not Evaluated<br>
+        <strong>Extinction Rate:</strong> Unknown<br>
+        <strong>Description:</strong> Large non-venomous snake known for its immense size.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.worldwildlife.org/places/amazon" target="_blank">WWF - Amazon</a></p>
+    `);
+
+    // 5. Macaw
+    var marker12 = L.marker([-14.2350, -51.9253], {
+        draggable: true,
+        title: "Macaw"
+    }).addTo(map).bindPopup(`
+        <h1>Macaw</h1>
+        <img src="macaw.jpg" style="width:200px">
+        <p><strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong> Rainforests of South America<br>
+        <strong>Population:</strong> Declining<br>
+        <strong>Conservation Status:</strong> Varies by species; some Critically Endangered<br>
+        <strong>Extinction Rate:</strong> High for some species<br>
+        <strong>Description:</strong> Colorful parrots with long tails and strong beaks.<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.parrots.org/" target="_blank">World Parrot Trust</a></p>
+    `);
+    var marker9 = L.marker([-1.8312, -78.1834], {
+    draggable: true,
+    title: "Andean Condor"
+}).addTo(map).bindPopup(`
+    <h1>Andean Condor</h1>
+    <img src="andean condor.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong> Andes Mountains (Ecuador, Peru, Chile, Argentina)<br>
+        <strong>Population:</strong> ~6,700<br>
+        <strong>Description:</strong> The Andean Condor is one of the world's largest flying birds, known for its massive wingspan and importance in Andean cultures.<br>
+        <strong>Endangerment Level:</strong> Near Threatened<br>
+        <strong>Threat Level:</strong> Medium (Habitat loss, poisoning, hunting)<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.birdlife.org/species/andean-condor/" target="_blank">BirdLife International - Andean Condor</a><br>
+        <strong>Extinction Rate:</strong> Declining at ~2-3% annually<br>
+        <strong>Evolution Pattern:</strong> Evolved to glide long distances in mountainous terrain.<br>
+        <strong>Habitat:</strong> High-altitude grasslands and cliffs.
+    </p>
+`);
+
+var marker10 = L.marker([-19.9208, -43.9378], {
+    draggable: true,
+    title: "Maned Wolf"
+}).addTo(map).bindPopup(`
+    <h1>Maned Wolf</h1>
+    <img src="maned wolf.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Mammal<br>
+        <strong>Found in:</strong> Cerrado grasslands (Brazil, Bolivia, Paraguay)<br>
+        <strong>Population:</strong> ~17,000<br>
+        <strong>Description:</strong> The Maned Wolf is a unique canid with long legs and a reddish coat, often referred to as a "fox on stilts."<br>
+        <strong>Endangerment Level:</strong> Near Threatened<br>
+        <strong>Threat Level:</strong> Medium (Habitat loss, road collisions, diseases from domestic animals)<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.worldlandtrust.org/species/maned-wolf/" target="_blank">World Land Trust - Maned Wolf</a><br>
+        <strong>Extinction Rate:</strong> Decreasing by ~2% annually<br>
+        <strong>Evolution Pattern:</strong> Adapted for open grasslands with long legs for visibility and speed.<br>
+        <strong>Habitat:</strong> Tropical savannas and grasslands.
+    </p>
+`);
+
+var marker11 = L.marker([-50.7374, -72.5215], {
+    draggable: true,
+    title: "Magellanic Penguin"
+}).addTo(map).bindPopup(`
+    <h1>Magellanic Penguin</h1>
+    <img src="magellanic penguin.jpg" style="width:200px; display:block; margin-bottom:10px;">
+    <p>
+        <strong>Species Type:</strong> Bird<br>
+        <strong>Found in:</strong> Southern Patagonia (Chile, Argentina) and the Falkland Islands<br>
+        <strong>Population:</strong> ~1.3 million breeding pairs<br>
+        <strong>Description:</strong> The Magellanic Penguin is a medium-sized penguin known for its black-and-white plumage and coastal breeding colonies.<br>
+        <strong>Endangerment Level:</strong> Near Threatened<br>
+        <strong>Threat Level:</strong> Medium (Oil spills, overfishing, climate change)<br>
+        <strong>Conservation Efforts:</strong> <a href="https://www.worldwildlife.org/species/magellanic-penguin" target="_blank">WWF - Magellanic Penguin</a><br>
+        <strong>Extinction Rate:</strong> Stable but vulnerable to environmental changes<br>
+        <strong>Evolution Pattern:</strong> Developed strong swimming abilities for hunting fish in cold waters.<br>
+        <strong>Habitat:</strong> Coastal cliffs and islands.
+    </p>
+`);
+
+    // Marker for White-tailed Deer
+    var marker1 = L.marker([39.8283, -98.5795], {
+        draggable: true,
+        title: "White-tailed Deer"
+    }).addTo(map).bindPopup(`
+        <h1>White-tailed Deer</h1>
+        <img src="white tailed deer.jpg" style="width:200px; display:block; margin-bottom:10px;">
+        <p>
+            <strong>Species Type:</strong> Mammal<br>
+            <strong>Found in:</strong> USA, Canada, Mexico, Central America<br>
+            <strong>Population:</strong> ~30 million (Stable)<br>
+            <strong>Description:</strong> Known for their characteristic white under-tail, these deer are highly adaptable and thrive in various habitats.<br>
+            <strong>Endangerment Level:</strong> Least Concern<br>
+            <strong>Threat Level:</strong> Low (Predation, habitat loss)<br>
+            <strong>Conservation Link:</strong> <a href="https://www.nwf.org/Educational-Resources/Wildlife-Guide/Mammals/White-Tailed-Deer" target="_blank">National Wildlife Federation - White-tailed Deer</a><br>
+            <strong>Extinction Rate:</strong> Very Low<br>
+            <strong>Habitat:</strong> Forests, grasslands, and suburban areas.
+        </p>
+    `);
+
+    // Marker for Red Deer
+    var marker2 = L.marker([55.3781, -3.436], {
+        draggable: true,
+        title: "Red Deer"
+    }).addTo(map).bindPopup(`
+        <h1>Red Deer</h1>
+        <img src="red deer.jpg" style="width:200px; display:block; margin-bottom:10px;">
+        <p>
+            <strong>Species Type:</strong> Mammal<br>
+            <strong>Found in:</strong> Europe, Asia Minor, North Africa, introduced to New Zealand and Australia<br>
+            <strong>Population:</strong> Stable<br>
+            <strong>Description:</strong> One of the largest deer species, known for its striking reddish coat and majestic antlers.<br>
+            <strong>Endangerment Level:</strong> Least Concern<br>
+            <strong>Threat Level:</strong> Medium (Habitat loss, hunting)<br>
+            <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/2977/22160667" target="_blank">IUCN Red List - Red Deer</a><br>
+            <strong>Extinction Rate:</strong> Low<br>
+            <strong>Habitat:</strong> Woodlands, grasslands, and mountains.
+        </p>
+    `);
+
+    // Marker for Sambar Deer
+    var marker3 = L.marker([27.7128, 85.324], {
+        draggable: true,
+        title: "Sambar Deer"
+    }).addTo(map).bindPopup(`
+        <h1>Sambar Deer</h1>
+        <img src="sambar deer.jpg" style="width:200px; display:block; margin-bottom:10px;">
+        <p>
+            <strong>Species Type:</strong> Mammal<br>
+            <strong>Found in:</strong> India, Southeast Asia, China<br>
+            <strong>Population:</strong> Decreasing<br>
+            <strong>Description:</strong> A large, nocturnal deer with shaggy coats and robust antlers, commonly found in tropical forests.<br>
+            <strong>Endangerment Level:</strong> Vulnerable<br>
+            <strong>Threat Level:</strong> High (Habitat loss, poaching)<br>
+            <strong>Conservation Link:</strong> <a href="https://www.wwfindia.org/about_wwf/priority_species/sambar_deer/" target="_blank">WWF India - Sambar Deer</a><br>
+            <strong>Extinction Rate:</strong> Medium<br>
+            <strong>Habitat:</strong> Forests, wetlands, and grasslands.
+        </p>
+    `);
+
+    // Marker for Moose (North American Elk)
+    var marker4 = L.marker([61.524, 105.3188], {
+        draggable: true,
+        title: "Moose"
+    }).addTo(map).bindPopup(`
+        <h1>Moose</h1>
+        <img src="moose.jpg" style="width:200px; display:block; margin-bottom:10px;">
+        <p>
+            <strong>Species Type:</strong> Mammal<br>
+            <strong>Found in:</strong> North America, Northern Europe, Siberia<br>
+            <strong>Population:</strong> ~1.5 million (Stable)<br>
+            <strong>Description:</strong> The largest species of deer, moose are known for their large, palmate antlers and preference for cold climates.<br>
+            <strong>Endangerment Level:</strong> Least Concern<br>
+            <strong>Threat Level:</strong> Low (Habitat changes, vehicle collisions)<br>
+            <strong>Conservation Link:</strong> <a href="https://www.iucnredlist.org/species/41776/22155863" target="_blank">IUCN Red List - Moose</a><br>
+            <strong>Extinction Rate:</strong> Low<br>
+            <strong>Habitat:</strong> Boreal forests, wetlands, and tundra.
+        </p>
+    `);
+
+    // Marker for Reindeer (Caribou)
+    var marker5 = L.marker([67.5, -140.0], {
+        draggable: true,
+        title: "Reindeer (Caribou)"
+    }).addTo(map).bindPopup(`
+        <h1>Reindeer (Caribou)</h1>
+        <img src="reindeer.jpg" style="width:200px; display:block; margin-bottom:10px;">
+        <p>
+            <strong>Species Type:</strong> Mammal<br>
+            <strong>Found in:</strong> Arctic and Subarctic regions (Alaska, Canada, Scandinavia, Russia)<br>
+            <strong>Population:</strong> ~3 million (Declining)<br>
+            <strong>Description:</strong> Famous for its association with Christmas folklore, reindeer are known for their migration over long distances.<br>
+            <strong>Endangerment Level:</strong> Vulnerable<br>
+            <strong>Threat Level:</strong> Medium (Climate change, habitat loss)<br>
+            <strong>Conservation Link:</strong> <a href="https://www.worldwildlife.org/species/reindeer" target="_blank">WWF - Reindeer</a><br>
+            <strong>Extinction Rate:</strong> Medium<br>
+            <strong>Habitat:</strong> Tundra, boreal forests, and mountainous regions.
+        </p>
+    `);
+
+        // Add heat map data for endangered species
+        var endangeredSpeciesData = [
+            // Bengal Tigers (Endangered)
+            [21.9497, 88.7880, 1],
+            [22.9868, 87.8550, 0.8],
+            [23.8103, 86.9914, 0.6],
+            
+            // Snow Leopard (Vulnerable)
+            [33.7782, 76.5762, 1],
+            [34.1526, 77.5770, 0.8],
+            [32.2396, 77.1887, 0.7],
+            
+            // Asiatic Lion (Endangered)
+            [21.1240, 70.8022, 1],
+            [21.2437, 70.4721, 0.9],
+            [21.0000, 71.0000, 0.7],
+            
+            // Gharial (Critically Endangered)
+            [25.4358, 81.8463, 1],
+            [25.3176, 82.9739, 0.9],
+            [26.7606, 82.1271, 0.8],
+            
+            // Kakapo (Critically Endangered)
+            [-45.0302, 169.8611, 1],
+            [-45.1302, 169.9611, 0.9],
+            [-44.9302, 169.7611, 0.8],
+            
+            // Northern Hairy-Nosed Wombat (Critically Endangered)
+            [-37.4713, 144.7852, 1],
+            [-37.5713, 144.8852, 0.9],
+            [-37.3713, 144.6852, 0.8],
+            //sambar 
+            [27.7128, 85.324,1],
+            [27.7000,85.500,0.9],
+            [27.7500,85.600,0.8]
+        ];
+
+        var heatLayer = L.heatLayer(endangeredSpeciesData, {
+            radius: 25,
+            blur: 15,
+            maxZoom: 10,
+            gradient: {0.4: 'blue', 0.65: 'lime', 1: 'red'}
+        });
+
+        var heatMapVisible = false;
+        function toggleHeatMap() {
+            if (heatMapVisible) {
+                map.removeLayer(heatLayer);
+            } else {
+                map.addLayer(heatLayer);
+            }
+            heatMapVisible = !heatMapVisible;
+        }
+
+        // Add search functionality
+        var markers = [];  // Array to store all markers
+        var searchInput = document.getElementById('search-input');
+        var searchResults = document.querySelector('.search-results');
+
+        // Function to add marker to the markers array
+        function addMarkerToArray(marker) {
+            var popupContent = marker.getPopup().getContent();
+            var title = marker.options.title || '';
+            var description = popupContent.replace(/<[^>]*>/g, '');  // Remove HTML tags
+            markers.push({
+                marker: marker,
+                title: title.toLowerCase(),
+                description: description.toLowerCase()
+            });
+        }
+
+        // Add all existing markers to the array
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.Marker) {
+                addMarkerToArray(layer);
+            }
+        });
+
+        // Search function
+        searchInput.addEventListener('input', function(e) {
+            var searchTerm = e.target.value.toLowerCase();
+            searchResults.innerHTML = '';
+
+            if (searchTerm.length < 2) return;  // Only search for 2 or more characters
+
+            var matchedMarkers = markers.filter(function(item) {
+                return item.title.includes(searchTerm) || 
+                       item.description.includes(searchTerm);
+            });
+
+            matchedMarkers.forEach(function(item) {
+                var div = document.createElement('div');
+                div.textContent = item.marker.options.title;
+                div.style.padding = '5px';
+                div.style.cursor = 'pointer';
+                div.addEventListener('mouseover', function() {
+                    this.style.backgroundColor = '#f0f0f0';
+                });
+                div.addEventListener('mouseout', function() {
+                    this.style.backgroundColor = 'transparent';
+                });
+                div.addEventListener('click', function() {
+                    map.setView(item.marker.getLatLng(), 8);
+                    item.marker.openPopup();
+                });
+                searchResults.appendChild(div);
+            });
+        });
+
+        // Clear search results when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-container')) {
+                searchResults.innerHTML = '';
+                searchInput.value = '';
+            }
+        });
+        var baseMaps = {
+            "open street":osm,
+            "esri imagery":esriImagery,
+            "topographical":OpenTopoMap,
+            "forest cover":CyclOSM
+        }
+        L.control.layers(baseMaps).addTo(map);
+        L.Control.geocoder().addTo(map);
+        L.control.layers(baseMaps, null, { position: 'topleft' }).addTo(map);
+
+        
+    </script>
+</body>
+</html>
