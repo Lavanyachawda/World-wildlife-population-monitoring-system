@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WWPMS – World Wildlife Population Monitoring System</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+  <style>
+    /* ── Reset & Base ─────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Header ───────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #0d2137 0%, #0a3d2b 100%);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-bottom: 1px solid #21d07a33;
+      z-index: 1001;
+      flex-shrink: 0;
+    }
+    .header-title { display: flex; align-items: center; gap: 10px; }
+    .header-title span.icon { font-size: 1.6rem; }
+    .header-title h1 { font-size: 1rem; font-weight: 700; color: #21d07a; letter-spacing: 0.5px; }
+    .header-title p { font-size: 0.7rem; color: #8b949e; }
+
+    /* ── Search Bar ───────────────────────────────── */
+    .search-wrap { position: relative; min-width: 220px; }
+    #search-input {
+      width: 100%;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid #30363d;
+      background: #161b22;
+      color: #e6edf3;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #search-input:focus { border-color: #21d07a; }
+    #search-input::placeholder { color: #484f58; }
+    .search-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0; right: 0;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 2000;
+      display: none;
+    }
+    .search-results.visible { display: block; }
+    .search-result-item {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .search-result-item:hover { background: #21d07a22; color: #21d07a; }
+    .search-result-item .badge {
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    /* ── Filter Bar ───────────────────────────────── */
+    .filter-bar {
+      background: #161b22;
+      border-bottom: 1px solid #21303d;
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .filter-label { font-size: 0.72rem; color: #8b949e; }
+    .filter-btn {
+      padding: 4px 12px;
+      border-radius: 12px;
+      border: 1px solid #30363d;
+      background: transparent;
+      color: #8b949e;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active { background: #21d07a; border-color: #21d07a; color: #0d1117; font-weight: 600; }
+    .heat-btn {
+      margin-left: auto;
+      padding: 4px 14px;
+      border-radius: 12px;
+      border: 1px solid #f0883e66;
+      background: transparent;
+      color: #f0883e;
+      font-size: 0.72rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .heat-btn.active { background: #f0883e; color: #0d1117; font-weight: 600; }
+
+    /* ── Map ──────────────────────────────────────── */
+    #map { flex: 1; }
+
+    /* ── Stats Bar ───────────────────────────────── */
+    .stats-bar {
+      position: absolute;
+      bottom: 28px;
+      left: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .stat-chip {
+      background: #161b22ee;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 0.7rem;
+      color: #8b949e;
+    }
+    .stat-chip strong { color: #e6edf3; }
+
+    /* ── Popup Styles ─────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: #161b22 !important;
+      border: 1px solid #30363d !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+      color: #e6edf3 !important;
+      padding: 0 !important;
+      min-width: 280px;
+      max-width: 320px;
+    }
+    .leaflet-popup-tip { background: #161b22 !important; }
+    .leaflet-popup-content { margin: 0 !important; width: 100% !important; }
+    .popup-img {
+      width: 100%; height: 160px; object-fit: cover;
+      border-radius: 12px 12px 0 0;
+      display: block;
+    }
+    .popup-img-fallback {
+      width: 100%; height: 160px;
+      background: linear-gradient(135deg,#0d2137,#0a3d2b);
+      border-radius: 12px 12px 0 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 3rem;
+    }
+    .popup-body { padding: 12px 14px 14px; }
+    .popup-body h2 { font-size: 1rem; font-weight: 700; color: #21d07a; margin-bottom: 6px; }
+    .popup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 8px; }
+    .popup-grid .field { font-size: 0.7rem; color: #8b949e; }
+    .popup-grid .value { font-size: 0.72rem; color: #e6edf3; }
+    .popup-desc { font-size: 0.72rem; color: #8b949e; line-height: 1.5; margin-bottom: 8px; border-top: 1px solid #21303d; padding-top: 8px; }
+    .popup-link {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: #21d07a;
+      text-decoration: none;
+      border: 1px solid #21d07a44;
+      padding: 3px 10px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .popup-link:hover { background: #21d07a22; }
+    .status-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Legend ───────────────────────────────────── */
+    .legend {
+      position: absolute;
+      bottom: 28px;
+      right: 12px;
+      z-index: 1000;
+      background: #161b22ee;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.7rem;
+    }
+    .legend h4 { color: #8b949e; margin-bottom: 6px; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; color: #e6edf3; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Mobile ───────────────────────────────────── */
+    @media (max-width: 600px) {
+      .header-title h1 { font-size: 0.85rem; }
+      .search-wrap { min-width: 160px; }
+      .stats-bar { display: none; }
+      .legend { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-title">
+    <span class="icon">🌍</span>
+    <div>
+      <h1>World Wildlife Population Monitoring System</h1>
+      <p>Real-time species tracking &amp; extinction risk assessment</p>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <input type="text" id="search-input" placeholder="🔍  Search species, continent…" autocomplete="off" />
+    <div class="search-results" id="search-results"></div>
+  </div>
+</header>
+
+<!-- Filter Bar -->
+<div class="filter-bar">
+  <span class="filter-label">Filter:</span>
+  <button class="filter-btn active" data-filter="all">All</button>
+  <button class="filter-btn" data-filter="Asia">Asia</button>
+  <button class="filter-btn" data-filter="Africa">Africa</button>
+  <button class="filter-btn" data-filter="Oceania">Oceania</button>
+  <button class="filter-btn" data-filter="South America">S. America</button>
+  <button class="filter-btn" data-filter="North America">N. America</button>
+  <button class="filter-btn" data-filter="Critically Endangered">🔴 Critical</button>
+  <button class="filter-btn" data-filter="Endangered">🟠 Endangered</button>
+  <button class="filter-btn" data-filter="Vulnerable">🟡 Vulnerable</button>
+  <button class="heat-btn" id="heat-btn">🔥 Heatmap</button>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Stats -->
+<div class="stats-bar" id="stats-bar"></div>
+
+<!-- Legend -->
+<div class="legend">
+  <h4>Status</h4>
+  <div class="legend-row"><div class="legend-dot" style="background:#e53935"></div> Critically Endangered</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#fb8c00"></div> Endangered</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#fdd835"></div> Vulnerable</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#43a047"></div> Near Threatened</div>
+  <div class="legend-row"><div class="legend-dot" style="background:#1e88e5"></div> Least Concern</div>
+</div>
+
+<script>
+// ── Map init ──────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView([20, 20], 2);
+
+const baseLayers = {
+  "Hybrid Satellite": L.tileLayer(
+    'https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=bgRMfxP3yPOJ4wFYi7dq',
+    { attribution: '© MapTiler © OpenStreetMap contributors', maxZoom: 18 }
+  ),
+  "Esri Imagery": L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '© Esri' }
+  ),
+  "Topographic": L.tileLayer(
+    'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    { maxZoom: 17, attribution: '© OpenTopoMap' }
+  ),
+  "Forest Cover": L.tileLayer(
+    'https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png',
+    { maxZoom: 20, attribution: 'CyclOSM © OpenStreetMap' }
+  )
+};
+baseLayers["Hybrid Satellite"].addTo(map);
+L.control.layers(baseLayers, null, { position: 'topleft' }).addTo(map);
+L.Control.geocoder({ position: 'topleft' }).addTo(map);
+
+// ── Colour helpers ────────────────────────────────────────────────────────
+const STATUS_COLOR = {
+  "Critically Endangered": "#e53935",
+  "Endangered":            "#fb8c00",
+  "Vulnerable":            "#fdd835",
+  "Near Threatened":       "#43a047",
+  "Least Concern":         "#1e88e5"
+};
+const STATUS_BADGE_BG = {
+  "Critically Endangered": "#4a0e0e",
+  "Endangered":            "#4a2000",
+  "Vulnerable":            "#4a3d00",
+  "Near Threatened":       "#0a3320",
+  "Least Concern":         "#0d2137"
+};
+
+function markerIcon(status) {
+  const color = STATUS_COLOR[status] || "#8b949e";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+    <path d="M14 0C6.27 0 0 6.27 0 14c0 9.63 14 24 14 24S28 23.63 28 14C28 6.27 21.73 0 14 0z" fill="${color}" opacity="0.92"/>
+    <circle cx="14" cy="14" r="7" fill="white" opacity="0.9"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: '',
+    iconSize: [28, 38],
+    iconAnchor: [14, 38],
+    popupAnchor: [0, -40]
+  });
+}
+
+function buildPopup(a) {
+  const color = STATUS_COLOR[a.endangermentLevel] || '#8b949e';
+  const bg    = STATUS_BADGE_BG[a.endangermentLevel] || '#161b22';
+  const imgHtml = a.image
+    ? `<img class="popup-img" src="${a.image}" alt="${a.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" /><div class="popup-img-fallback" style="display:none">🦁</div>`
+    : `<div class="popup-img-fallback">🦁</div>`;
+  return `
+    ${imgHtml}
+    <div class="popup-body">
+      <span class="status-badge" style="background:${bg};color:${color};border:1px solid ${color}44">${a.endangermentLevel}</span>
+      <h2>${a.name}</h2>
+      <div class="popup-grid">
+        <span class="field">Species</span><span class="value">${a.speciesType}</span>
+        <span class="field">Population</span><span class="value">${a.population}</span>
+        <span class="field">Threat</span><span class="value">${a.threatLevel}</span>
+        <span class="field">Continent</span><span class="value">${a.continent}</span>
+        <span class="field">Found In</span><span class="value" style="grid-column:span 1">${a.foundIn}</span>
+        <span class="field">Habitat</span><span class="value">${a.habitat}</span>
+        <span class="field">Threats</span><span class="value">${a.threats}</span>
+        <span class="field">Evolution</span><span class="value">${a.evolutionPattern}</span>
+      </div>
+      <div class="popup-desc">${a.description}</div>
+      <a class="popup-link" href="${a.conservationLink}" target="_blank" rel="noopener">🔗 ${a.conservationOrg}</a>
+    </div>`;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let allAnimals = [];
+let markerMap  = {};   // id → L.Marker
+let heatLayer  = null;
+let heatVisible = false;
+let activeFilter = 'all';
+
+// ── Load JSON ─────────────────────────────────────────────────────────────
+fetch('animals.json')
+  .then(r => r.json())
+  .then(data => {
+    allAnimals = data;
+    renderMarkers(data);
+    buildHeatLayer(data);
+    renderStats(data);
+  })
+  .catch(err => console.error('Failed to load animals.json:', err));
+
+function renderMarkers(animals) {
+  // Clear existing
+  Object.values(markerMap).forEach(m => map.removeLayer(m));
+  markerMap = {};
+
+  animals.forEach(a => {
+    const marker = L.marker([a.lat, a.lng], {
+      icon: markerIcon(a.endangermentLevel),
+      title: a.name
+    }).bindPopup(buildPopup(a), { maxWidth: 320 });
+    marker.addTo(map);
+    markerMap[a.id] = marker;
+  });
+}
+
+function buildHeatLayer(animals) {
+  const points = animals
+    .filter(a => a.heatWeight > 0.5)
+    .map(a => [a.lat, a.lng, a.heatWeight]);
+  heatLayer = L.heatLayer(points, {
+    radius: 30, blur: 20, maxZoom: 8,
+    gradient: { 0.4: '#1e88e5', 0.65: '#fdd835', 1: '#e53935' }
+  });
+}
+
+function renderStats(animals) {
+  const total    = animals.length;
+  const critical = animals.filter(a => a.endangermentLevel === 'Critically Endangered').length;
+  const endang   = animals.filter(a => a.endangermentLevel === 'Endangered').length;
+  const vuln     = animals.filter(a => a.endangermentLevel === 'Vulnerable').length;
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-chip">🐾 <strong>${total}</strong> Species</div>
+    <div class="stat-chip">🔴 <strong>${critical}</strong> Critically Endangered</div>
+    <div class="stat-chip">🟠 <strong>${endang}</strong> Endangered</div>
+    <div class="stat-chip">🟡 <strong>${vuln}</strong> Vulnerable</div>`;
+}
+
+// ── Filter logic ──────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    const filtered = activeFilter === 'all'
+      ? allAnimals
+      : allAnimals.filter(a => a.continent === activeFilter || a.endangermentLevel === activeFilter);
+    renderMarkers(filtered);
+    renderStats(filtered);
+    if (heatVisible && heatLayer) {
+      map.removeLayer(heatLayer);
+      buildHeatLayer(filtered);
+      map.addLayer(heatLayer);
+    }
+  });
+});
+
+// ── Heatmap toggle ────────────────────────────────────────────────────────
+document.getElementById('heat-btn').addEventListener('click', function () {
+  if (!heatLayer) return;
+  if (heatVisible) {
+    map.removeLayer(heatLayer);
+    this.classList.remove('active');
+    this.textContent = '🔥 Heatmap';
+  } else {
+    map.addLayer(heatLayer);
+    this.classList.add('active');
+    this.textContent = '🔥 Hide Heatmap';
+  }
+  heatVisible = !heatVisible;
+});
+
+// ── Search ────────────────────────────────────────────────────────────────
+const searchInput   = document.getElementById('search-input');
+const searchResults = document.getElementById('search-results');
+
+searchInput.addEventListener('input', function () {
+  const q = this.value.trim().toLowerCase();
+  searchResults.innerHTML = '';
+  if (q.length < 2) { searchResults.classList.remove('visible'); return; }
+
+  const matches = allAnimals.filter(a =>
+    a.name.toLowerCase().includes(q) ||
+    a.continent.toLowerCase().includes(q) ||
+    a.speciesType.toLowerCase().includes(q) ||
+    a.endangermentLevel.toLowerCase().includes(q) ||
+    a.foundIn.toLowerCase().includes(q)
+  );
+
+  if (matches.length === 0) {
+    searchResults.innerHTML = `<div class="search-result-item" style="color:#484f58">No results found</div>`;
+  } else {
+    matches.forEach(a => {
+      const color = STATUS_COLOR[a.endangermentLevel] || '#8b949e';
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      div.innerHTML = `
+        <span>${a.name}</span>
+        <span class="badge" style="background:${color}22;color:${color};border:1px solid ${color}44">${a.endangermentLevel}</span>
+        <span style="margin-left:auto;font-size:0.65rem;color:#484f58">${a.continent}</span>`;
+      div.addEventListener('click', () => {
+        map.setView([a.lat, a.lng], 6, { animate: true });
+        // Ensure marker is visible regardless of current filter
+        if (!markerMap[a.id]) renderMarkers(allAnimals);
+        setTimeout(() => markerMap[a.id]?.openPopup(), 400);
+        searchResults.classList.remove('visible');
+        searchInput.value = a.name;
+      });
+      searchResults.appendChild(div);
+    });
+  }
+  searchResults.classList.add('visible');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) {
+    searchResults.classList.remove('visible');
+  }
+});
+</script>
+</body>
+</html>
